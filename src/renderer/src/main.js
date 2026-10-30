@@ -3738,6 +3738,7 @@ function renderP2PTeams() {
     }
 
     const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const canHover = window.matchMedia('(hover:hover) and (pointer:fine)').matches
 
     teams.forEach((team) => {
         const group = document.createElement('div')
@@ -3792,8 +3793,14 @@ function renderP2PTeams() {
                     </div>
                     <span style="font-size:13px;color:${locked ? '#aaa' : '#333'};font-style:${locked ? 'italic' : 'normal'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;">${esc(title)}</span>
                     ${accessBtn}${delBtn}`
-                row.onmouseenter = () => { row.querySelectorAll('.p2p-del-note,.p2p-note-access').forEach((x) => { x.style.opacity = '0.8' }) }
-                row.onmouseleave = () => { row.querySelectorAll('.p2p-del-note,.p2p-note-access').forEach((x) => { x.style.opacity = '0' }) }
+                row.style.touchAction = 'manipulation'
+                if (canHover) {
+                    row.onmouseenter = () => { row.querySelectorAll('.p2p-del-note,.p2p-note-access').forEach((x) => { x.style.opacity = '0.8' }) }
+                    row.onmouseleave = () => { row.querySelectorAll('.p2p-del-note,.p2p-note-access').forEach((x) => { x.style.opacity = '0' }) }
+                } else {
+                    // Safari can consume the first tap when hover reveals controls.
+                    row.querySelectorAll('.p2p-del-note,.p2p-note-access').forEach(x => { x.style.opacity = '0.8' })
+                }
                 row.onclick = (ev) => {
                     if (ev.target.classList.contains('p2p-del-note') || ev.target.classList.contains('p2p-note-access')) return
                     if (locked) {
@@ -3827,8 +3834,12 @@ function renderP2PTeams() {
             children.appendChild(empty)
         }
 
-        header.onmouseenter = () => { const a = header.querySelector('.ts-group-actions'); if (a) a.style.display = 'flex' }
-        header.onmouseleave = () => { const a = header.querySelector('.ts-group-actions'); if (a) a.style.display = 'none' }
+        if (canHover) {
+            header.onmouseenter = () => { const a = header.querySelector('.ts-group-actions'); if (a) a.style.display = 'flex' }
+            header.onmouseleave = () => { const a = header.querySelector('.ts-group-actions'); if (a) a.style.display = 'none' }
+        } else {
+            header.querySelector('.ts-group-actions').style.display = 'flex'
+        }
         header.onclick = (ev) => {
             if (ev.target.closest('.ts-group-actions')) return
             const expanded = children.classList.toggle('expanded')
