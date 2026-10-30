@@ -1632,6 +1632,14 @@ async function init() {
     const toggleSidebar = () => { sidebar.classList.toggle('collapsed') }
     if (collapseBtn) collapseBtn.addEventListener('click', toggleSidebar)
     if (expandBtn) expandBtn.addEventListener('click', toggleSidebar)
+    if (document.body.classList.contains('is-web')) {
+      const sidebarDismiss = document.createElement('button')
+      sidebarDismiss.type = 'button'
+      sidebarDismiss.className = 'mobile-sidebar-dismiss'
+      sidebarDismiss.setAttribute('aria-label', 'Close sidebar')
+      sidebarDismiss.addEventListener('click', () => sidebar.classList.add('collapsed'))
+      document.querySelector('.wrapper').appendChild(sidebarDismiss)
+    }
     
     // Special "view" tabs (Company Brain / Plugin Lab / Plugin Studio) get their
     // OWN tab in the bar instead of overlaying the active file tab. Their tab keys

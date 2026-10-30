@@ -24,6 +24,7 @@ style.textContent = `
   #paperus-offline .offline-info{position:absolute;bottom:40px;right:0;width:min(310px,calc(100vw - 44px));max-height:65dvh;overflow:auto;padding:16px;background:#fff;border:1px solid #d5ded8;border-radius:12px;box-shadow:0 8px 30px #0002}
   #paperus-offline p{margin:10px 0;font-size:13px}
   #paperus-offline button{font:inherit;font-size:14px;padding:10px;margin-top:6px;border:1px solid #b2c7b9;background:#eef6f0;border-radius:8px;cursor:pointer}
+  .mobile-sidebar-dismiss{display:none}
   @media(max-width:700px){
     body.is-web{position:fixed;inset:0;min-height:0;height:100%;overscroll-behavior:none}
     body.is-web #app{position:fixed;top:var(--paperus-viewport-top,0px);height:var(--paperus-viewport-height,100dvh)}
@@ -31,6 +32,7 @@ style.textContent = `
     body.is-web .wrapper{position:relative;min-height:0}
     body.is-web .main{height:100%}
     body.is-web #sidebar:not(.collapsed){position:absolute;inset:0 auto 0 0;width:min(86vw,320px)!important;min-width:0!important;max-width:none;box-shadow:8px 0 28px #0002}
+    body.is-web #sidebar:not(.collapsed) ~ .mobile-sidebar-dismiss{display:block;position:absolute;inset:0;width:100%;height:100%;z-index:4999;border:0;padding:0;background:transparent;touch-action:manipulation}
     body.is-web .sidebar-header-area{padding-left:8px}
     body.is-web aside{transition:none}
     body.is-web .traffic-lights-spacer.collapsed-only{width:0!important}
