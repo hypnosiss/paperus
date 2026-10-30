@@ -25,7 +25,8 @@ style.textContent = `
   #paperus-offline p{margin:10px 0;font-size:13px}
   #paperus-offline button{font:inherit;font-size:14px;padding:10px;margin-top:6px;border:1px solid #b2c7b9;background:#eef6f0;border-radius:8px;cursor:pointer}
   @media(max-width:700px){
-    body.is-web #app{height:var(--paperus-viewport-height,100dvh)}
+    body.is-web{position:fixed;inset:0;min-height:0;height:100%;overscroll-behavior:none}
+    body.is-web #app{position:fixed;top:var(--paperus-viewport-top,0px);height:var(--paperus-viewport-height,100dvh)}
     body.is-web .window-layout{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
     body.is-web .wrapper{position:relative;min-height:0}
     body.is-web .main{height:100%}
@@ -45,8 +46,23 @@ document.head.appendChild(style)
 document.body.appendChild(panel)
 function fitViewport() {
   document.documentElement.style.setProperty('--paperus-viewport-height', `${window.visualViewport?.height || innerHeight}px`)
+  document.documentElement.style.setProperty('--paperus-viewport-top', `${window.visualViewport?.offsetTop || 0}px`)
 }
 window.visualViewport?.addEventListener('resize', fitViewport)
+window.visualViewport?.addEventListener('scroll', fitViewport)
+// Safari can leave the layout viewport scrolled after its keyboard Done button.
+// Reset only the outer page; the note's own scroll position remains untouched.
+function restorePageOrigin() {
+  if (!window.matchMedia('(max-width:700px)').matches) return
+  const active = document.activeElement
+  if (active?.matches('input,textarea,select,[contenteditable=true]') || active?.isContentEditable) return
+  window.scrollTo(0, 0)
+  fitViewport()
+}
+document.addEventListener('focusout', () => {
+  for (const delay of [0, 150, 400]) setTimeout(restorePageOrigin, delay)
+})
+window.addEventListener('scroll', () => requestAnimationFrame(restorePageOrigin), { passive: true })
 window.addEventListener('resize', fitViewport)
 fitViewport()
 const status = panel.querySelector('[data-status]')
