@@ -5,7 +5,7 @@ with sync_playwright() as p:
  args=['--host-resolver-rules='+os.environ['PAPERUS_TEST_HOST_MAPPING']] if os.environ.get('PAPERUS_TEST_HOST_MAPPING') and engine=='chromium' else []
  b=getattr(p,engine).launch(args=args)
  opts=p.devices['iPhone 13'].copy();opts.pop('default_browser_type',None)
- c=b.new_context(**opts);page=c.new_page()
+ c=b.new_context(**opts);c.add_init_script("localStorage.setItem('notionless_onboarded','1')");page=c.new_page()
  page.goto(os.environ.get('PAPERUS_TEST_URL','http://localhost:18083'),wait_until='domcontentloaded')
  page.wait_for_function('!!window.p2pTeamManager')
  if page.locator('.pob-skip').is_visible():page.locator('.pob-skip').click()

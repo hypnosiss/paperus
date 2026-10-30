@@ -31,7 +31,7 @@ style.textContent = `
     body.is-web .window-layout{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
     body.is-web .wrapper{position:relative;min-height:0}
     body.is-web .main{height:100%}
-    body.is-web #sidebar:not(.collapsed){position:absolute;inset:0 auto 0 0;width:min(86vw,320px)!important;min-width:0!important;max-width:none;box-shadow:8px 0 28px #0002}
+    body.is-web #sidebar:not(.collapsed){position:absolute;z-index:5000;inset:0 auto 0 0;width:min(86vw,320px)!important;min-width:0!important;max-width:none;box-shadow:8px 0 28px #0002}
     body.is-web #sidebar:not(.collapsed) ~ .mobile-sidebar-dismiss{display:block;position:absolute;inset:0;width:100%;height:100%;z-index:4999;border:0;padding:0;background:transparent;touch-action:manipulation}
     body.is-web .sidebar-header-area{padding-left:8px}
     body.is-web aside{transition:none}
