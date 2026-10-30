@@ -2646,13 +2646,35 @@ async function init() {
             || (activeItem && activeItem.dataset.path)
             || (currentOpenPath && !String(currentOpenPath).startsWith('cloud:') ? currentOpenPath : null)
         if (!targetPath) return
+        if (String(targetPath).split('/').includes('.trash')) return
         if (!confirm('Move to trash?')) return
-        // Soft-delete: move into .trash/ and record an undoable entry. Falls back
-        // to the legacy hard-delete (OS trash) only if the soft-delete path fails.
+        if (currentOpenPath === targetPath) {
+            await saveCurrentFile()
+            clearTimeout(saveTimer)
+            clearTimeout(renameTimer)
+            if (projectionManager) { projectionManager.destroy(); projectionManager = null }
+            if (docEngine) { docEngine.destroy(); docEngine = null }
+            currentOpenPath = null
+        }
+        // Move into .trash/ and keep the original if the move fails.
         let moved = null
         if (trashManager) moved = await trashManager.trashFile(targetPath).catch(() => null)
         if (!moved) {
-            await window.api.invoke('fs:delete', targetPath)
+            alert('Could not move the note to Trash. Your file was kept.')
+            return
+        }
+        if (tabManager) {
+            tabManager.tabs = tabManager.tabs.filter(tab => tab.path !== targetPath)
+            tabManager.activeTabIndex = Math.min(tabManager.activeTabIndex, tabManager.tabs.length - 1)
+            tabManager.renderTabs()
+        }
+        if (await window.api.getSettings('lastOpenedFile') === targetPath) {
+            await window.api.setSettings('lastOpenedFile', null)
+        }
+        if (recentsManager) {
+            recentsManager.list = recentsManager.list.filter(item => item.path !== targetPath)
+            await recentsManager._persist()
+            await sidebarManager.renderRecents()
         }
         await loadProject(null)
         showNoFileSelected()
@@ -3594,6 +3616,7 @@ function sanitizeKnownFiles(files = []) {
     const p = String(raw || '').trim().replace(/\\/g, '/')
     if (!p) continue
     if (p.startsWith('cloud:')) continue
+    if (p.split('/').includes('.trash')) continue
     if (p.startsWith('folder:')) continue
     if (/\.migration-backup$/i.test(p)) continue
     if (/\.local_conflict$/i.test(p)) continue
@@ -3611,9 +3634,7 @@ async function loadProject(path) {
   }
   const knownFilesRaw = await window.api.getSettings('knownFiles') || []
   const knownFiles = sanitizeKnownFiles(knownFilesRaw)
-  if (knownFiles.length !== knownFilesRaw.length) {
-      await window.api.setSettings('knownFiles', knownFiles)
-  }
+  // Filtering is a view operation. Keep Trash records intact for restoration.
   if (knownProjects.length === 0 && knownFiles.length === 0) {
       await sidebarManager.renderWorkspace([], [])
       return
@@ -3881,6 +3902,7 @@ function renderP2PTeams() {
 }
 
 async function loadFileContent(path) {
+  if (typeof path !== 'string' || !path || path.split('/').includes('.trash')) return
   if (typeof path === 'string' && path.startsWith('cloud:')) {
       const cloudDocId = path.slice('cloud:'.length).split(':')[0].replace(/\.migration-backup$/i, '').trim()
       if (cloudDocId) {
