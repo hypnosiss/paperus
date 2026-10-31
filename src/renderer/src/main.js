@@ -41,6 +41,7 @@ import { ExportMenu } from './export'
 import { ImportManager } from './import'
 import { TrashManager } from './trash'
 import { TeamspacesManager } from './teamspaces'
+import { getDefaultNoteTeamId, openNotePreferences } from './note-preferences'
 import { P2PTeamManager } from './p2p-team'
 import {
   openCreateTeamDialog, openJoinTeamDialog, openClaimDialog, openInviteDialog, openRosterDialog,
@@ -2947,6 +2948,7 @@ async function renderWorkspacePopover() {
                 <div class="wp-menu-item" id="wp-open-folder"><i class="fas fa-folder-open" style="width:16px;text-align:center;color:#999;"></i> <span>Open folder</span></div>
                 <div class="wp-menu-item" id="wp-load-workspace"><i class="fas fa-project-diagram" style="width:16px;text-align:center;color:#999;"></i> <span>Load workspace…</span></div>
                 <div class="wp-menu-item" id="wp-save-workspace"><i class="fas fa-save" style="width:16px;text-align:center;color:#999;"></i> <span>Save workspace…</span></div>
+                <div class="wp-menu-item" id="wp-settings"><i class="fas fa-cog" style="width:16px;text-align:center;color:#999;"></i> <span>Settings</span></div>
             </div>
             <div class="wp-divider"></div>
             <div class="wp-section-header">Teams · peer-to-peer</div>
@@ -2992,6 +2994,7 @@ async function renderWorkspacePopover() {
         document.getElementById('wp-open-folder').onclick = async () => { hide(); await openProject() }
         document.getElementById('wp-load-workspace').onclick = async () => { hide(); await openWorkspace() }
         document.getElementById('wp-save-workspace').onclick = async () => { hide(); await saveWorkspace() }
+        document.getElementById('wp-settings').onclick = () => { hide(); void openNotePreferences(p2pTeamManager) }
         document.getElementById('wp-new-team').onclick = () => { hide(); window.dispatchEvent(new CustomEvent('cmd:create-team')) }
         document.getElementById('wp-join-team').onclick = () => { hide(); window.dispatchEvent(new CustomEvent('cmd:join-team')) }
         const wpPlugins = document.getElementById('wp-plugins')
@@ -3054,6 +3057,34 @@ async function promptSaveVersion() {
 }
 
 async function createNewNote(initialContent = null) {
+  const teamId = await getDefaultNoteTeamId()
+  if (teamId) {
+    if (!p2pTeamManager?.getTeams().some(team => team.teamId === teamId)) {
+      alert('Your default team is unavailable. Choose a location in Settings before creating a note.')
+      await openNotePreferences(p2pTeamManager)
+      return
+    }
+    try {
+      const title = initialContent?.match(/^# (.*)(\n|$)/)?.[1]?.trim() || 'Untitled'
+      const noteId = await p2pTeamManager.createNote(teamId, { title })
+      const engine = await p2pTeamManager.openNote(teamId, noteId)
+      if (initialContent) {
+        await engine.whenSynced()
+        engine.text.insert(0, initialContent)
+      }
+      renderP2PTeams()
+      hideNoFileSelected()
+      mountP2PEngineInEditor(engine, {
+        docName: title,
+        tabKey: `team:${teamId}:${noteId}`,
+        teamNote: { teamId, noteId },
+      })
+    } catch (error) {
+      console.error('[Main] Could not create note in default team', error)
+      alert('Could not create the note in your default team. Please try again.')
+    }
+    return
+  }
   const activeItem = document.querySelector('.tree-item.active')
   let currentPath = Store.projectPath 
   if (activeDirectory) currentPath = activeDirectory
