@@ -24,7 +24,8 @@ import { TranscludeWidget, TRANSCLUDE_RE } from './cm-transclude'
 import { ColumnsWidget, isColumnsFence } from './cm-columns'
 import { collectDateDecorations, DATE_TOKEN_RE } from './cm-mention'
 import { collectCriticDecorations } from './cm-suggest'
-import { checkboxChange } from './checklist'
+import { checkboxChange, checklistOrder, saveChecklistOrder } from './checklist'
+import { ySyncFacet } from 'y-codemirror.next'
 
 // Block math `$$ … $$` (may span lines). Used in a doc-wide regex pass.
 const BLOCK_MATH_RE = /\$\$([\s\S]+?)\$\$/g
@@ -55,8 +56,18 @@ class CheckboxWidget extends WidgetType {
     const toggle = () => {
       if (view.state.readOnly) return
       const pos = view.posAtDOM(cb)
-      const change = checkboxChange(view.state.doc.toString(), pos, !this.checked)
-      if (change) view.dispatch({ changes: change, userEvent: 'input.checklist' })
+      const sync = view.state.facet(ySyncFacet)
+      const doc = sync?.ytext?.doc
+      const change = checkboxChange(view.state.doc.toString(), pos, !this.checked, undefined, checklistOrder(doc?.guid, doc))
+      if (change) {
+        const apply = () => {
+          saveChecklistOrder(doc?.guid, change.order, doc)
+          const { from, to, insert } = change
+          view.dispatch({ changes: { from, to, insert }, userEvent: 'input.checklist' })
+        }
+        if (doc) doc.transact(apply, sync)
+        else apply()
+      }
     }
     cb.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return
@@ -613,6 +624,8 @@ function buildDecorations(state) {
       // ── Task checkbox ──
       if (name === 'TaskMarker') {
         const line = state.doc.lineAt(from)
+        const checked = /\[[xX]\]/.test(state.doc.sliceString(from, to))
+        if (checked) decos.push(Decoration.line({ class: 'cm-task-completed' }).range(line.from))
         if (!cursorInRange(state, line.from, line.to)) {
           const text = state.doc.sliceString(from, to)
           const checked = text.includes('x') || text.includes('X')

@@ -22,7 +22,7 @@ export async function openNotePreferences(manager) {
         <input type="checkbox" id="completed-tasks-bottom" style="margin-top:3px;">
         <span>Move completed checklist items to the bottom</span>
       </label>
-      <p style="font-size:13px;line-height:1.5;">Applies when you check or uncheck an item. Shared notes keep the same list order on all devices. Create a checklist with / → To-do list.</p>
+      <p style="font-size:13px;line-height:1.5;">Completed items are crossed out and move to the end. Uncheck an item to return it to its original place. Shared notes keep the same list order on all devices. Create a checklist with / → To-do list.</p>
       <p id="note-preferences-status" role="status" style="font-size:13px;"></p>
       <button class="btn" id="note-preferences-close" type="button">Done</button>
     </section>`
