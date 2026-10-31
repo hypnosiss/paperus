@@ -42,6 +42,7 @@ import { ImportManager } from './import'
 import { TrashManager } from './trash'
 import { TeamspacesManager } from './teamspaces'
 import { getDefaultNoteTeamId, openNotePreferences } from './note-preferences'
+import { titleFromContent, isUntitled } from './auto-title'
 import { P2PTeamManager } from './p2p-team'
 import {
   openCreateTeamDialog, openJoinTeamDialog, openClaimDialog, openInviteDialog, openRosterDialog,
@@ -3416,11 +3417,15 @@ async function renameFile(newTitle) {
     const dir = await window.api.invoke('path:dirname', oldPath)
     const ext = await window.api.invoke('path:extname', oldPath) || '.md'
     const safeTitle = newTitle.replace(/[\\/:*?"<>|]/g, '_')
-    const newPath = `${dir}/${safeTitle}${ext}`
+    let newPath = `${dir}/${safeTitle}${ext}`
     
     if (oldPath === newPath) return
     try {
+        let suffix = 1
+        while (newPath !== oldPath && await window.api.pathExists(newPath)) newPath = `${dir}/${safeTitle} ${suffix++}${ext}`
+        if (newPath === oldPath) return
         await window.api.invoke('fs:rename', oldPath, newPath)
+        if (currentOpenPath === oldPath) currentOpenPath = newPath
         
         // Update lastOpenedFile if it was the one renamed
         const lastFile = await window.api.getSettings('lastOpenedFile');
@@ -3462,6 +3467,7 @@ function handleTextChange(update) {
   if (window.isUpdatingFromYjs) return
 
   const fullText = update.state.doc.toString()
+  scheduleAutomaticTitle()
   const textTrimmed = fullText.trim()
   const words = textTrimmed ? textTrimmed.split(/\s+/).length : 0
   const lines = update.state.doc.lines
@@ -3469,9 +3475,7 @@ function handleTextChange(update) {
   const wordCountEl = document.getElementById('word-count');
   if (wordCountEl) wordCountEl.textContent = `${lines}L ${words}W`
 
-    // Title/body are decoupled (Notion model): the title is the filename, edited
-    // via the big page title. A leading body "# " is plain content and must NOT
-    // hijack the filename, so the legacy body-H1 → title sync is disabled.
+    // Only untitled/automatically named notes derive their title from the body.
 
     if (docEngine && docEngine.presence) {
         docEngine.presence.setTyping(true)
@@ -3495,9 +3499,41 @@ setInterval(async () => {
     }
 }, 10 * 60 * 1000)
 
-async function handleTitleChange(e) {
+let automaticTitleTimer
+function scheduleAutomaticTitle() {
+  clearTimeout(automaticTitleTimer)
+  const engine = docEngine
+  if (!engine || e2eeReadOnlyLocked) return
+  automaticTitleTimer = setTimeout(async () => {
+    if (docEngine !== engine || window.isUpdatingFromYjs || window.appState?.isSettingsOpen) return
+    const input = document.getElementById('doc-title')
+    const metadata = engine.doc.getMap('metadata')
+    const current = input?.value || ''
+    if (metadata.get('manualTitle')) return
+    if (!isUntitled(current) && current !== metadata.get('automaticTitle')) return
+    // Do not interfere while the user is entering a title.
+    if (document.activeElement?.matches('.page-title, #doc-title')) return
+    const title = titleFromContent(engine.text.toString())
+    if (!title || title === current) return
+    try {
+      await handleTitleChange({ target: { value: title } }, true)
+      if (docEngine !== engine) return
+      input.value = title
+      pageHeader?.syncTitle()
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    } catch (error) { console.warn('[Main] Automatic title failed', error) }
+  }, 1200)
+}
+
+async function handleTitleChange(e, automatic = false) {
   if (window.appState && window.appState.isSettingsOpen) return
   const newTitle = e.target.value.trim() || 'Untitled'
+  if (docEngine) {
+    const metadata = docEngine.doc.getMap('metadata')
+    // Event listeners pass only the event; automatic calls explicitly pass true.
+    if (automatic === true) metadata.set('automaticTitle', newTitle)
+    else metadata.set('manualTitle', !isUntitled(newTitle) && newTitle !== metadata.get('automaticTitle'))
+  }
 
   // Synced P2P team note: the title lives in the team's note index (tree), not
   // on the filesystem. Rename it there and skip the local file save path.
