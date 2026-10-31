@@ -24,6 +24,7 @@ import { TranscludeWidget, TRANSCLUDE_RE } from './cm-transclude'
 import { ColumnsWidget, isColumnsFence } from './cm-columns'
 import { collectDateDecorations, DATE_TOKEN_RE } from './cm-mention'
 import { collectCriticDecorations } from './cm-suggest'
+import { checkboxChange } from './checklist'
 
 // Block math `$$ … $$` (may span lines). Used in a doc-wide regex pass.
 const BLOCK_MATH_RE = /\$\$([\s\S]+?)\$\$/g
@@ -50,16 +51,25 @@ class CheckboxWidget extends WidgetType {
     cb.type = 'checkbox'
     cb.checked = this.checked
     cb.className = 'cm-checkbox'
-    cb.addEventListener('mousedown', (e) => {
+    cb.setAttribute('aria-label', this.checked ? 'Mark task incomplete' : 'Mark task complete')
+    const toggle = () => {
+      if (view.state.readOnly) return
+      const pos = view.posAtDOM(cb)
+      const change = checkboxChange(view.state.doc.toString(), pos, !this.checked)
+      if (change) view.dispatch({ changes: change, userEvent: 'input.checklist' })
+    }
+    cb.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return
       e.preventDefault()
       e.stopPropagation()
-      const pos = view.posAtDOM(cb)
-      const line = view.state.doc.lineAt(pos)
-      const text = line.text
-      const newText = this.checked
-        ? text.replace('[x]', '[ ]').replace('[X]', '[ ]')
-        : text.replace('[ ]', '[x]')
-      view.dispatch({ changes: { from: line.from, to: line.to, insert: newText } })
+      toggle()
+    })
+    cb.addEventListener('click', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      // Pointer input is handled before Safari can focus the editor and
+      // replace this widget. Keyboard activation arrives as a detail=0 click.
+      if (e.detail === 0) toggle()
     })
     return cb
   }

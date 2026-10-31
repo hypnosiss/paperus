@@ -43,6 +43,7 @@ import { TrashManager } from './trash'
 import { TeamspacesManager } from './teamspaces'
 import { getDefaultNoteTeamId, openNotePreferences } from './note-preferences'
 import { titleFromContent, isUntitled } from './auto-title'
+import { loadChecklistPreference } from './checklist'
 import { P2PTeamManager } from './p2p-team'
 import {
   openCreateTeamDialog, openJoinTeamDialog, openClaimDialog, openInviteDialog, openRosterDialog,
@@ -1539,6 +1540,7 @@ function initDerivedEngines() {
 }
 
 async function init() {
+    await loadChecklistPreference()
   try {
     window.scrollTo(0, 0)
     document.documentElement.scrollLeft = 0

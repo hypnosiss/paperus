@@ -5,7 +5,7 @@ export function titleFromContent(content) {
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/https?:\/\/\S+/g, ' ')
-    .replace(/(^|\n)\s*(?:#{1,6}\s+|>\s*|[-*+]\s+|\d+[.)]\s+|\[[ xX]\]\s*)/g, ' ')
+    .replace(/(^|\n)\s*(?:#{1,6}\s+|>\s*|(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s*)?|\[[ xX]\]\s*)/g, ' ')
     .replace(/[`*_~]/g, '')
     .replace(/\s+/g, ' ').trim()
   return Array.from(text.split(' ').slice(0, 6).join(' ')).slice(0, 60).join('').trim()

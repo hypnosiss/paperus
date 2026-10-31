@@ -1,4 +1,5 @@
 const KEY = 'defaultNoteTeamId'
+import { completedTasksAtBottom, setCompletedTasksAtBottom } from './checklist'
 
 export async function getDefaultNoteTeamId() {
   return await window.api.getSettings(KEY) || null
@@ -12,15 +13,30 @@ export async function openNotePreferences(manager) {
   overlay.className = 'settings-modal-overlay open'
   overlay.innerHTML = `
     <section role="dialog" aria-modal="true" aria-labelledby="note-preferences-title"
-      style="background:var(--bg-color,#fff);color:var(--text-color,#333);padding:24px;border-radius:12px;width:420px;max-width:calc(100vw - 32px);box-sizing:border-box;">
+      style="background:var(--bg-color,#fff);color:var(--text-color,#333);padding:24px;border-radius:12px;width:420px;max-width:calc(100vw - 32px);max-height:85dvh;overflow-y:auto;box-sizing:border-box;">
       <h2 id="note-preferences-title">Settings</h2>
       <label for="default-note-team">Default location for new notes</label>
       <select id="default-note-team" style="display:block;width:100%;font-size:16px;margin:12px 0;padding:10px;"></select>
       <p style="font-size:13px;line-height:1.5;">New notes in a team are shared with its members and sync across your devices. This preference is saved on this device.</p>
+      <label style="display:flex;gap:10px;align-items:start;font-size:14px;margin:18px 0;">
+        <input type="checkbox" id="completed-tasks-bottom" style="margin-top:3px;">
+        <span>Move completed checklist items to the bottom</span>
+      </label>
+      <p style="font-size:13px;line-height:1.5;">Applies when you check or uncheck an item. Shared notes keep the same list order on all devices. Create a checklist with / → To-do list.</p>
       <p id="note-preferences-status" role="status" style="font-size:13px;"></p>
       <button class="btn" id="note-preferences-close" type="button">Done</button>
     </section>`
   const select = overlay.querySelector('select')
+  const checklist = overlay.querySelector('#completed-tasks-bottom')
+  checklist.checked = completedTasksAtBottom()
+  checklist.onchange = async () => {
+    try {
+      await setCompletedTasksAtBottom(checklist.checked)
+      overlay.querySelector('[role="status"]').textContent = 'Saved'
+    } catch {
+      overlay.querySelector('[role="status"]').textContent = 'Could not save. Please try again.'
+    }
+  }
   select.add(new Option('Private — on this device', ''))
   const teams = manager?.getTeams() || []
   for (const team of teams) select.add(new Option(team.name, team.teamId))
